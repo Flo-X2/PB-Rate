@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Weekly rate heatmap — ecoSOLAR</title>
+<style>
+  .viz-root{
+    color-scheme: light;
+    --surface-1:#fcfcfb;
+    --page:#f9f9f7;
+    --text-primary:#0b0b0b;
+    --text-secondary:#52514e;
+    --muted:#898781;
+    --grid:#e1e0d9;
+    --baseline:#c3c2b7;
+    --border:rgba(11,11,11,0.10);
+    --live-dot:#0ca30c;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--page);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text-primary);}
+  .viz-root{max-width:900px;margin:0 auto;padding:28px 20px 60px;}
+  h1{font-size:20px;margin:0 0 6px;}
+  .intro{color:var(--text-secondary);font-size:14px;line-height:1.5;max-width:760px;margin:0 0 22px;}
+  .intro b{color:var(--text-primary);}
+  .toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:26px;flex-wrap:wrap;}
+  .toggle-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .seg button{border:none;background:var(--surface-1);color:var(--text-secondary);font-size:13px;padding:7px 14px;cursor:pointer;font-family:inherit;}
+  .seg button.active{background:var(--text-primary);color:#fff;}
+  .seg button:not(:last-child){border-right:1px solid var(--border);}
+
+  section.card{background:var(--surface-1);border:1px solid var(--border);border-radius:14px;padding:22px 22px 26px;margin-bottom:28px;}
+  .card h2{font-size:15px;margin:0 0 3px;}
+  .card .sub{font-size:12px;color:var(--muted);margin:0 0 18px;}
+
+  /* live-now banner */
+  .live-card{display:flex;flex-direction:column;gap:14px;}
+  .live-head{display:flex;align-items:center;gap:8px;}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--live-dot);animation:pulse 2s infinite;flex:0 0 auto;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .live-head .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .live-head .clock{font-size:12px;color:var(--text-secondary);margin-left:auto;font-variant-numeric:tabular-nums;}
+  .live-rows{display:flex;gap:40px;flex-wrap:wrap;}
+  .live-row .rlabel{font-size:11px;color:var(--muted);margin-bottom:2px;}
+  .live-row .rvalue{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2;}
+  .live-row .rsub{font-size:12px;color:var(--text-secondary);margin-top:2px;}
+
+  .heatmaps{display:flex;gap:36px;flex-wrap:wrap;}
+  .heatmap-block{}
+  .heatmap-title{font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;}
+  .hm-grid{display:grid;grid-template-columns:34px repeat(7,26px);grid-auto-rows:9px;gap:1px;}
+  .hm-daylabel{font-size:10px;color:var(--muted);text-align:center;align-self:end;padding-bottom:2px;}
+  .hm-hourlabel{font-size:9px;color:var(--muted);text-align:right;padding-right:4px;line-height:9px;}
+  .hm-cell{border-radius:1px;}
+  .hm-cell.current{position:relative;z-index:3;box-shadow:0 0 0 1.5px #fff, 0 0 0 3.5px #0b0b0b;}
+  .hm-daylabel.current,.hm-hourlabel.current{color:var(--text-primary);font-weight:700;}
+
+  /* exact-value legend ("the bar at the bottom") */
+  .legend-block{margin-top:20px;}
+  .legend-name{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;}
+  .legend-chips{display:flex;flex-direction:column;gap:5px;}
+  .legend-chip{display:flex;align-items:center;gap:8px;font-size:12px;}
+  .legend-chip .swatch{width:14px;height:14px;border-radius:3px;flex:0 0 auto;}
+  .legend-chip .value{font-weight:600;color:var(--text-primary);width:58px;flex:0 0 auto;font-variant-numeric:tabular-nums;}
+  .legend-chip .desc{color:var(--text-secondary);}
+  .legends-row{display:flex;gap:48px;flex-wrap:wrap;}
+
+  #tooltip{position:fixed;pointer-events:none;background:var(--text-primary);color:#fff;font-size:12px;line-height:1.4;padding:8px 10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.18);z-index:50;opacity:0;transform:translate(-50%,-100%);transition:opacity .08s;max-width:200px;}
+  #tooltip b{display:block;font-size:12px;margin-bottom:2px;}
+
+  footer.note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <h1>Weekly rate heatmap</h1>
+  <p class="intro">Every hour of the week as a coloured cell, import and export side by side. Prices default to
+  <b>including GST</b> — since that's what actually leaves your account — with a toggle at the bottom to switch to
+  the GST-exclusive figures that appear as individual line items on your invoice.
+  The banner below always reflects the rate in effect right now, for whichever season and GST setting is selected.</p>
+
+  <section class="card live-card">
+    <div class="live-head">
+      <span class="live-dot"></span>
+      <span class="label">Right now</span>
+      <span class="clock" id="liveClock"></span>
+    </div>
+    <div class="live-rows">
+      <div class="live-row">
+        <div class="rlabel">You're paying to import</div>
+        <div class="rvalue" id="liveImportValue">—</div>
+        <div class="rsub" id="liveImportSub">—</div>
+      </div>
+      <div class="live-row">
+        <div class="rlabel">You're getting back for export</div>
+        <div class="rvalue" id="liveExportValue">—</div>
+        <div class="rsub" id="liveExportSub">—</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="toggle-row">
+    <span class="toggle-label">Season</span>
+    <div class="seg" id="seasonToggle">
+      <button data-season="now" class="active">Now — May–Aug 2026</button>
+      <button data-season="next">Next — Sep 2026–Mar 2027</button>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="heatmaps" id="heatmaps"></div>
+
+    <div class="legend-block">
+      <div class="legends-row" id="legendChips"></div>
+    </div>
+  </section>
+
+  <div class="toggle-row">
+    <span class="toggle-label">Prices</span>
+    <div class="seg" id="gstToggle">
+      <button data-gst="excl">Excl. GST</button>
+      <button data-gst="incl" class="active">Incl. GST (+15%)</button>
+    </div>
+  </div>
+
+  <footer class="note">
+    Hover any cell for the exact day/hour and rate — the cell ringed in white-and-black (with its day/hour labels
+    bolded) is the current one. Say the word if you'd like these turned into actual dollar charges using your real
+    usage (rather than the c/kWh rate), a monthly total, or anything else layered on top.
+  </footer>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ---------- data ----------
+const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+const weekdayImport = [17.82,17.82,17.82,17.16,17.16,25.16,25.16,31.35,31.35,31.35,31.35,25.16,25.16,25.16,25.16,25.16,25.16,31.35,31.35,31.35,31.35,31.35,17.82,17.82];
+const weekendImport = [20.80,20.80,20.80,17.16,17.16,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80];
+
+const exportNow  = {
+  weekday: [-16,-16,-16,-16,-16,-16,-16, -27,-27,-27,-27, -16,-16,-16,-16,-16,-16, -27,-27,-27,-27, -22, -16,-16],
+  weekend: Array(24).fill(-16)
+};
+const exportNext = {
+  weekday: [-16,-16,-16,-16,-16,-16,-16, -21,-21,-21,-21, -16,-16,-16,-16,-16,-16, -21,-21,-21,-21, -16, -16,-16],
+  weekend: Array(24).fill(-16)
+};
+
+// exact-value legend entries ("the bar at the bottom") — every distinct slot that actually occurs
+const IMPORT_SLOTS = [
+  { value: 17.16, desc: '3am–5am, every day' },
+  { value: 17.82, desc: '12am–3am & 10pm–12am, Mon–Fri' },
+  { value: 20.80, desc: '5am–12am, Sat–Sun' },
+  { value: 25.16, desc: 'Shoulder — 5–7am & 11am–5pm, Mon–Fri' },
+  { value: 31.35, desc: 'Peak — 7–11am & 5–10pm, Mon–Fri' },
+];
+const EXPORT_SLOTS = {
+  now: [
+    { value: -16, desc: 'Off-peak & all weekend' },
+    { value: -22, desc: '9pm–10pm, Mon–Fri' },
+    { value: -27, desc: 'Peak — 7–11am & 5–9pm, Mon–Fri' },
+  ],
+  next: [
+    { value: -16, desc: 'Off-peak & all weekend' },
+    { value: -21, desc: 'Peak — 7–11am & 5–9pm, Mon–Fri' },
+  ]
+};
+
+// fixed scales so the two seasons are visually comparable when toggling
+const IMPORT_MIN = 17.16, IMPORT_MAX = 31.35;
+const EXPORT_MIN = 16,    EXPORT_MAX = 27;   // fixed to the larger (current) season
+const GST_RATE = 0.15;
+
+const BLUE_STOPS   = ['#b7d3f6','#6da7ec','#2a78d6','#184f95','#0d366b'];
+const ORANGE_STOPS = ['#fbe1d2','#f3ad84','#eb6834','#c14a1e','#8f3712'];
+
+function lerpColor(stops, t){
+  t = Math.max(0, Math.min(1, t));
+  const seg = t * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(seg));
+  const f = seg - i;
+  const a = hexToRgb(stops[i]), b = hexToRgb(stops[i+1]);
+  const r = Math.round(a.r + (b.r-a.r)*f);
+  const g = Math.round(a.g + (b.g-a.g)*f);
+  const bl= Math.round(a.b + (b.b-a.b)*f);
+  return `rgb(${r},${g},${bl})`;
+}
+function hexToRgb(hex){
+  const n = parseInt(hex.slice(1),16);
+  return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+}
+function importColor(v){ return lerpColor(BLUE_STOPS, (v - IMPORT_MIN)/(IMPORT_MAX - IMPORT_MIN)); }
+function exportColor(v){ return lerpColor(ORANGE_STOPS, (Math.abs(v) - EXPORT_MIN)/(EXPORT_MAX - EXPORT_MIN)); }
+
+function hourLabel(h){
+  const ampm = h < 12 ? 'a' : 'p';
+  let hh = h % 12; if (hh===0) hh=12;
+  return hh + ampm;
+}
+
+let season = 'now';
+let includeGST = true;
+
+// displayed value, honouring the GST toggle
+function fmt(v){
+  const mult = includeGST ? (1 + GST_RATE) : 1;
+  return (v * mult).toFixed(2) + 'c';
+}
+
+const tooltip = document.getElementById('tooltip');
+function showTip(e, html){
+  tooltip.innerHTML = html;
+  tooltip.style.left = e.clientX + 'px';
+  tooltip.style.top = (e.clientY - 10) + 'px';
+  tooltip.style.opacity = 1;
+}
+function hideTip(){ tooltip.style.opacity = 0; }
+function moveTip(e){
+  tooltip.style.left = e.clientX + 'px';
+  tooltip.style.top = (e.clientY - 10) + 'px';
+}
+
+// ---------- heatmaps ----------
+function renderHeatmaps(){
+  const wrap = document.getElementById('heatmaps');
+  wrap.innerHTML = '';
+  const exp = season === 'now' ? exportNow : exportNext;
+  const now = new Date();
+  const curDay = (now.getDay() + 6) % 7;
+  const curHour = now.getHours();
+
+  function buildGrid(title, valueFn, colorFn, unitLabel){
+    const block = document.createElement('div');
+    block.className = 'heatmap-block';
+    const h = document.createElement('div');
+    h.className = 'heatmap-title';
+    h.textContent = title;
+    block.appendChild(h);
+
+    const grid = document.createElement('div');
+    grid.className = 'hm-grid';
+
+    grid.appendChild(document.createElement('div')); // empty corner
+    for (let d=0; d<7; d++){
+      const dl = document.createElement('div');
+      dl.className = 'hm-daylabel' + (d === curDay ? ' current' : '');
+      dl.textContent = DAY_NAMES[d];
+      grid.appendChild(dl);
+    }
+
+    for (let h2=0; h2<24; h2++){
+      const hl = document.createElement('div');
+      hl.className = 'hm-hourlabel' + (h2 === curHour ? ' current' : '');
+      hl.textContent = (h2%3===0 || h2===curHour) ? hourLabel(h2) : '';
+      grid.appendChild(hl);
+
+      for (let d=0; d<7; d++){
+        const isWeekend = d >= 5;
+        const v = valueFn(d, h2, isWeekend);
+        const cell = document.createElement('div');
+        cell.className = 'hm-cell';
+        if (d === curDay && h2 === curHour) cell.classList.add('current');
+        cell.style.background = colorFn(v);
+        cell.addEventListener('mouseenter', e => showTip(e, `<b>${DAY_NAMES[d]} ${hourLabel(h2)}–${hourLabel((h2+1)%24)}</b>${unitLabel}: ${fmt(v)}/kWh`));
+        cell.addEventListener('mousemove', moveTip);
+        cell.addEventListener('mouseleave', hideTip);
+        grid.appendChild(cell);
+      }
+    }
+    block.appendChild(grid);
+    wrap.appendChild(block);
+  }
+
+  buildGrid('Import — what you pay', (d,h,we)=> we ? weekendImport[h] : weekdayImport[h], importColor, 'Import');
+  buildGrid('Export — what you get back', (d,h,we)=> we ? exp.weekend[h] : exp.weekday[h], exportColor, 'Export credit');
+}
+
+// ---------- exact-value legend ("the bar at the bottom") ----------
+function renderLegendChips(){
+  const el = document.getElementById('legendChips');
+  const exportSlots = season === 'now' ? EXPORT_SLOTS.now : EXPORT_SLOTS.next;
+
+  function chipsHtml(title, slots, colorFn){
+    const rows = slots.map(s => `
+      <div class="legend-chip">
+        <span class="swatch" style="background:${colorFn(s.value)}"></span>
+        <span class="value">${fmt(s.value)}</span>
+        <span class="desc">${s.desc}</span>
+      </div>`).join('');
+    return `<div class="legend-block"><div class="legend-name">${title}</div><div class="legend-chips">${rows}</div></div>`;
+  }
+
+  el.innerHTML =
+    chipsHtml('Import rate — exact charge per slot', IMPORT_SLOTS, importColor) +
+    chipsHtml('Export rate — exact credit per slot', exportSlots, exportColor);
+}
+
+// ---------- live "right now" banner ----------
+function buildWeekArray(type){
+  const arr = [];
+  const exp = season === 'now' ? exportNow : exportNext;
+  for (let d=0; d<7; d++){
+    const isWeekend = d >= 5;
+    if (type === 'import') arr.push(...(isWeekend ? weekendImport : weekdayImport));
+    else arr.push(...(isWeekend ? exp.weekend : exp.weekday));
+  }
+  return arr;
+}
+function findNextChange(arr, idx){
+  const cur = arr[idx];
+  for (let step=1; step<=168; step++){
+    const i = (idx + step) % 168;
+    if (arr[i] !== cur) return { steps: step, next: arr[i] };
+  }
+  return { steps: 168, next: cur };
+}
+function durationText(steps, now){
+  const totalMin = steps*60 - now.getMinutes();
+  const h = Math.floor(totalMin/60), m = totalMin%60;
+  if (h <= 0) return `${m} min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+function pad(n){ return n<10 ? '0'+n : n; }
+function clockText(now){
+  let h = now.getHours(); const m = now.getMinutes();
+  const ampm = h < 12 ? 'am' : 'pm';
+  let hh = h % 12; if (hh===0) hh = 12;
+  return `${DAY_NAMES[(now.getDay()+6)%7]} ${hh}:${pad(m)}${ampm}`;
+}
+
+function renderLive(){
+  const now = new Date();
+  const dayIdx = (now.getDay() + 6) % 7;
+  const hour = now.getHours();
+  const idx = dayIdx*24 + hour;
+
+  const impArr = buildWeekArray('import');
+  const expArr = buildWeekArray('export');
+  const curImp = impArr[idx], curExp = expArr[idx];
+  const nImp = findNextChange(impArr, idx);
+  const nExp = findNextChange(expArr, idx);
+  const impDir = nImp.next > curImp ? 'rises to' : 'drops to';
+  const expDir = Math.abs(nExp.next) > Math.abs(curExp) ? 'increases to' : 'decreases to';
+
+  document.getElementById('liveClock').textContent = clockText(now);
+  document.getElementById('liveImportValue').textContent = fmt(curImp) + '/kWh';
+  document.getElementById('liveImportSub').textContent =
+    `Holds for ${durationText(nImp.steps, now)}, then ${impDir} ${fmt(nImp.next)}/kWh`;
+  document.getElementById('liveExportValue').textContent = fmt(curExp) + '/kWh';
+  document.getElementById('liveExportSub').textContent =
+    `Holds for ${durationText(nExp.steps, now)}, then ${expDir} ${fmt(nExp.next)}/kWh`;
+}
+
+function renderAll(){
+  renderHeatmaps();
+  renderLegendChips();
+  renderLive();
+}
+
+document.getElementById('seasonToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  season = btn.dataset.season;
+  [...document.querySelectorAll('#seasonToggle button')].forEach(b => b.classList.toggle('active', b===btn));
+  renderAll();
+});
+
+document.getElementById('gstToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  includeGST = btn.dataset.gst === 'incl';
+  [...document.querySelectorAll('#gstToggle button')].forEach(b => b.classList.toggle('active', b===btn));
+  renderAll();
+});
+
+renderAll();
+setInterval(renderLive, 30000);
+</script>
+</body>
+</html>
