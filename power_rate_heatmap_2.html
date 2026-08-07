@@ -16,69 +16,86 @@
     --baseline:#c3c2b7;
     --border:rgba(11,11,11,0.10);
     --live-dot:#0ca30c;
+    --marker:#0ca30c;
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--page);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text-primary);}
-  .viz-root{max-width:900px;margin:0 auto;padding:28px 20px 60px;}
+  .viz-root{max-width:640px;margin:0 auto;padding:28px 20px 60px;}
   @media (max-width:600px){
     .viz-root{padding:18px 14px 44px;}
     h1{font-size:18px;}
     section.card{padding:16px 14px 18px;border-radius:12px;}
   }
-  h1{font-size:20px;margin:0 0 6px;}
-  .intro{color:var(--text-secondary);font-size:14px;line-height:1.5;max-width:760px;margin:0 0 22px;}
-  .intro b{color:var(--text-primary);}
-  .toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:26px;flex-wrap:wrap;}
+  h1{font-size:20px;margin:0 0 20px;}
+  .toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
   .toggle-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
   .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
   .seg button{border:none;background:var(--surface-1);color:var(--text-secondary);font-size:13px;padding:7px 14px;cursor:pointer;font-family:inherit;}
   .seg button.active{background:var(--text-primary);color:#fff;}
   .seg button:not(:last-child){border-right:1px solid var(--border);}
 
-  section.card{background:var(--surface-1);border:1px solid var(--border);border-radius:14px;padding:22px 22px 26px;margin-bottom:28px;}
-  .card h2{font-size:15px;margin:0 0 3px;}
-  .card .sub{font-size:12px;color:var(--muted);margin:0 0 18px;}
+  section.card{background:var(--surface-1);border:1px solid var(--border);border-radius:14px;padding:22px 22px 26px;margin-bottom:24px;}
 
   /* live-now banner */
   .live-card{display:flex;flex-direction:column;gap:14px;}
-  .live-head{display:flex;align-items:center;gap:8px;}
+  .live-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
   .live-dot{width:8px;height:8px;border-radius:50%;background:var(--live-dot);animation:pulse 2s infinite;flex:0 0 auto;}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
   .live-head .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .live-head .gst-note{font-size:11px;color:var(--muted);}
   .live-head .clock{font-size:12px;color:var(--text-secondary);margin-left:auto;font-variant-numeric:tabular-nums;}
   .live-rows{display:flex;gap:40px;flex-wrap:wrap;}
   .live-row .rlabel{font-size:11px;color:var(--muted);margin-bottom:2px;}
   .live-row .rvalue{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2;}
   .live-row .rsub{font-size:12px;color:var(--text-secondary);margin-top:2px;}
+  @media (max-width:600px){
+    .live-rows{gap:22px;}
+    .live-row{flex:1 1 140px;}
+    .live-row .rvalue{font-size:19px;}
+  }
 
-  .heatmaps{display:flex;gap:36px;flex-wrap:wrap;}
-  .heatmap-block{flex:1 1 260px;max-width:320px;min-width:220px;}
-  .heatmap-title{font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;}
-  .hm-grid{display:grid;grid-template-columns:30px repeat(7,1fr);grid-auto-rows:9px;gap:1px;}
-  .hm-daylabel{font-size:10px;color:var(--muted);text-align:center;align-self:end;padding-bottom:2px;}
-  .hm-hourlabel{font-size:9px;color:var(--muted);text-align:right;padding-right:4px;line-height:9px;}
-  .hm-cell{border-radius:1px;cursor:pointer;}
-  .hm-cell.current{position:relative;z-index:3;box-shadow:0 0 0 1.5px #fff, 0 0 0 3.5px #0b0b0b;}
+  .heatmap-title{font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;}
+  .hm-grid{display:grid;grid-template-columns:38px repeat(7,1fr);grid-auto-rows:13px;gap:1.5px;}
+  .hm-daylabel{font-size:11px;color:var(--muted);text-align:center;align-self:end;padding-bottom:3px;}
+  .hm-hourlabel{font-size:10px;color:var(--muted);text-align:right;padding-right:5px;line-height:13px;}
+  .hm-cell{border-radius:1px;cursor:pointer;position:relative;}
   .hm-daylabel.current,.hm-hourlabel.current{color:var(--text-primary);font-weight:700;}
 
+  /* "you are here" marker: a pulsing dot beats a static border for finding a
+     single small cell in a busy grid, regardless of the cell's own color */
+  .hm-cell.current::after{
+    content:'';
+    position:absolute;
+    top:50%;left:50%;
+    width:9px;height:9px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:var(--marker);
+    box-shadow:0 0 0 2px #fff, 0 0 6px rgba(0,0,0,.35);
+    animation: markerPulse 1.5s ease-in-out infinite;
+    z-index:4;
+  }
+  @keyframes markerPulse{
+    0%,100%{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+    50%{ transform:translate(-50%,-50%) scale(1.7); opacity:.55; }
+  }
+
   @media (max-width:600px){
-    .heatmaps{flex-direction:column;gap:26px;}
-    .heatmap-block{flex-basis:auto;max-width:100%;min-width:0;width:100%;}
-    .hm-grid{grid-template-columns:34px repeat(7,1fr);grid-auto-rows:22px;gap:2px;}
+    .hm-grid{grid-template-columns:34px repeat(7,1fr);grid-auto-rows:26px;gap:2px;}
     .hm-daylabel{font-size:12px;padding-bottom:4px;}
-    .hm-hourlabel{font-size:11px;line-height:22px;}
+    .hm-hourlabel{font-size:11px;line-height:26px;}
     .heatmap-title{font-size:13px;}
+    .hm-cell.current::after{width:16px;height:16px;}
   }
 
   /* exact-value legend ("the bar at the bottom") */
   .legend-block{margin-top:20px;}
   .legend-name{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;}
-  .legend-chips{display:flex;flex-direction:column;gap:5px;}
-  .legend-chip{display:flex;align-items:center;gap:8px;font-size:12px;}
+  .legend-chips{display:flex;flex-direction:column;gap:6px;}
+  .legend-chip{display:flex;align-items:center;gap:8px;font-size:12.5px;}
   .legend-chip .swatch{width:14px;height:14px;border-radius:3px;flex:0 0 auto;}
   .legend-chip .value{font-weight:600;color:var(--text-primary);width:58px;flex:0 0 auto;font-variant-numeric:tabular-nums;}
   .legend-chip .desc{color:var(--text-secondary);}
-  .legends-row{display:flex;gap:48px;flex-wrap:wrap;}
 
   #tooltip{position:fixed;pointer-events:none;background:var(--text-primary);color:#fff;font-size:12px;line-height:1.4;padding:8px 10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.18);z-index:50;opacity:0;transform:translate(-50%,-100%);transition:opacity .08s;max-width:200px;}
   #tooltip b{display:block;font-size:12px;margin-bottom:2px;}
@@ -86,29 +103,21 @@
   footer.note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px;}
 
   @media (max-width:600px){
-    .toggle-row{gap:8px;margin-bottom:20px;}
+    .toggle-row{gap:8px;}
     .seg{width:100%;}
     .seg button{flex:1 1 0;font-size:11.5px;padding:9px 6px;white-space:normal;line-height:1.25;text-align:center;}
-    .live-rows{gap:22px;}
-    .live-row{flex:1 1 140px;}
-    .live-row .rvalue{font-size:19px;}
-    .legends-row{gap:26px;}
-    .legend-chip{font-size:12.5px;}
   }
 </style>
 </head>
 <body>
 <div class="viz-root">
   <h1>Weekly rate heatmap</h1>
-  <p class="intro">Every hour of the week as a coloured cell, import and export side by side. Prices default to
-  <b>including GST</b> — since that's what actually leaves your account — with a toggle at the bottom to switch to
-  the GST-exclusive figures that appear as individual line items on your invoice.
-  The banner below always reflects the rate in effect right now, for whichever season and GST setting is selected.</p>
 
   <section class="card live-card">
     <div class="live-head">
       <span class="live-dot"></span>
       <span class="label">Right now</span>
+      <span class="gst-note" id="gstNote"></span>
       <span class="clock" id="liveClock"></span>
     </div>
     <div class="live-rows">
@@ -133,11 +142,18 @@
     </div>
   </div>
 
-  <section class="card">
-    <div class="heatmaps" id="heatmaps"></div>
+  <div class="toggle-row">
+    <span class="toggle-label">View</span>
+    <div class="seg" id="viewToggle">
+      <button data-view="import" class="active">Import</button>
+      <button data-view="export">Export</button>
+    </div>
+  </div>
 
+  <section class="card">
+    <div id="heatmapWrap"></div>
     <div class="legend-block">
-      <div class="legends-row" id="legendChips"></div>
+      <div id="legendChips"></div>
     </div>
   </section>
 
@@ -150,9 +166,9 @@
   </div>
 
   <footer class="note">
-    Hover any cell for the exact day/hour and rate — the cell ringed in white-and-black (with its day/hour labels
-    bolded) is the current one. Say the word if you'd like these turned into actual dollar charges using your real
-    usage (rather than the c/kWh rate), a monthly total, or anything else layered on top.
+    Hover (or tap, on a phone) any cell for the exact day/hour and rate — the pulsing dot marks the current one.
+    Say the word if you'd like these turned into actual dollar charges using your real usage, a monthly total, or
+    anything else layered on top.
   </footer>
 </div>
 
@@ -227,6 +243,7 @@ function hourLabel(h){
 }
 
 let season = 'now';
+let view = 'import';
 let includeGST = true;
 
 // displayed value, honouring the GST toggle
@@ -257,81 +274,79 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('.hm-cell')) hideTip();
 });
 
-// ---------- heatmaps ----------
-function renderHeatmaps(){
-  const wrap = document.getElementById('heatmaps');
+// ---------- heatmap (one grid at a time — Import or Export) ----------
+function renderHeatmap(){
+  const wrap = document.getElementById('heatmapWrap');
   wrap.innerHTML = '';
   const exp = season === 'now' ? exportNow : exportNext;
   const now = new Date();
   const curDay = (now.getDay() + 6) % 7;
   const curHour = now.getHours();
 
-  function buildGrid(title, valueFn, colorFn, unitLabel){
-    const block = document.createElement('div');
-    block.className = 'heatmap-block';
-    const h = document.createElement('div');
-    h.className = 'heatmap-title';
-    h.textContent = title;
-    block.appendChild(h);
+  const isImport = view === 'import';
+  const title = isImport ? 'Import — what you pay' : 'Export — what you get back';
+  const valueFn = isImport
+    ? (d,h,we)=> we ? weekendImport[h] : weekdayImport[h]
+    : (d,h,we)=> we ? exp.weekend[h] : exp.weekday[h];
+  const colorFn = isImport ? importColor : exportColor;
+  const unitLabel = isImport ? 'Import' : 'Export credit';
 
-    const grid = document.createElement('div');
-    grid.className = 'hm-grid';
+  const h = document.createElement('div');
+  h.className = 'heatmap-title';
+  h.textContent = title;
+  wrap.appendChild(h);
 
-    grid.appendChild(document.createElement('div')); // empty corner
-    for (let d=0; d<7; d++){
-      const dl = document.createElement('div');
-      dl.className = 'hm-daylabel' + (d === curDay ? ' current' : '');
-      dl.textContent = DAY_NAMES[d];
-      grid.appendChild(dl);
-    }
+  const grid = document.createElement('div');
+  grid.className = 'hm-grid';
 
-    for (let h2=0; h2<24; h2++){
-      const hl = document.createElement('div');
-      hl.className = 'hm-hourlabel' + (h2 === curHour ? ' current' : '');
-      hl.textContent = (h2%3===0 || h2===curHour) ? hourLabel(h2) : '';
-      grid.appendChild(hl);
-
-      for (let d=0; d<7; d++){
-        const isWeekend = d >= 5;
-        const v = valueFn(d, h2, isWeekend);
-        const cell = document.createElement('div');
-        cell.className = 'hm-cell';
-        if (d === curDay && h2 === curHour) cell.classList.add('current');
-        cell.style.background = colorFn(v);
-        const tipHtml = () => `<b>${DAY_NAMES[d]} ${hourLabel(h2)}–${hourLabel((h2+1)%24)}</b>${unitLabel}: ${fmt(v)}/kWh`;
-        cell.addEventListener('mouseenter', e => showTip(e, tipHtml()));
-        cell.addEventListener('mousemove', moveTip);
-        cell.addEventListener('mouseleave', hideTip);
-        cell.addEventListener('click', e => { e.stopPropagation(); showTip(e, tipHtml()); });
-        grid.appendChild(cell);
-      }
-    }
-    block.appendChild(grid);
-    wrap.appendChild(block);
+  grid.appendChild(document.createElement('div')); // empty corner
+  for (let d=0; d<7; d++){
+    const dl = document.createElement('div');
+    dl.className = 'hm-daylabel' + (d === curDay ? ' current' : '');
+    dl.textContent = DAY_NAMES[d];
+    grid.appendChild(dl);
   }
 
-  buildGrid('Import — what you pay', (d,h,we)=> we ? weekendImport[h] : weekdayImport[h], importColor, 'Import');
-  buildGrid('Export — what you get back', (d,h,we)=> we ? exp.weekend[h] : exp.weekday[h], exportColor, 'Export credit');
+  for (let h2=0; h2<24; h2++){
+    const hl = document.createElement('div');
+    hl.className = 'hm-hourlabel' + (h2 === curHour ? ' current' : '');
+    hl.textContent = (h2%3===0 || h2===curHour) ? hourLabel(h2) : '';
+    grid.appendChild(hl);
+
+    for (let d=0; d<7; d++){
+      const isWeekend = d >= 5;
+      const v = valueFn(d, h2, isWeekend);
+      const cell = document.createElement('div');
+      cell.className = 'hm-cell';
+      if (d === curDay && h2 === curHour) cell.classList.add('current');
+      cell.style.background = colorFn(v);
+      const tipHtml = () => `<b>${DAY_NAMES[d]} ${hourLabel(h2)}–${hourLabel((h2+1)%24)}</b>${unitLabel}: ${fmt(v)}/kWh`;
+      cell.addEventListener('mouseenter', e => showTip(e, tipHtml()));
+      cell.addEventListener('mousemove', moveTip);
+      cell.addEventListener('mouseleave', hideTip);
+      cell.addEventListener('click', e => { e.stopPropagation(); showTip(e, tipHtml()); });
+      grid.appendChild(cell);
+    }
+  }
+  wrap.appendChild(grid);
 }
 
 // ---------- exact-value legend ("the bar at the bottom") ----------
 function renderLegendChips(){
   const el = document.getElementById('legendChips');
-  const exportSlots = season === 'now' ? EXPORT_SLOTS.now : EXPORT_SLOTS.next;
+  const isImport = view === 'import';
+  const slots = isImport ? IMPORT_SLOTS : (season === 'now' ? EXPORT_SLOTS.now : EXPORT_SLOTS.next);
+  const colorFn = isImport ? importColor : exportColor;
+  const title = isImport ? 'Import rate — exact charge per slot' : 'Export rate — exact credit per slot';
 
-  function chipsHtml(title, slots, colorFn){
-    const rows = slots.map(s => `
-      <div class="legend-chip">
-        <span class="swatch" style="background:${colorFn(s.value)}"></span>
-        <span class="value">${fmt(s.value)}</span>
-        <span class="desc">${s.desc}</span>
-      </div>`).join('');
-    return `<div class="legend-block"><div class="legend-name">${title}</div><div class="legend-chips">${rows}</div></div>`;
-  }
+  const rows = slots.map(s => `
+    <div class="legend-chip">
+      <span class="swatch" style="background:${colorFn(s.value)}"></span>
+      <span class="value">${fmt(s.value)}</span>
+      <span class="desc">${s.desc}</span>
+    </div>`).join('');
 
-  el.innerHTML =
-    chipsHtml('Import rate — exact charge per slot', IMPORT_SLOTS, importColor) +
-    chipsHtml('Export rate — exact credit per slot', exportSlots, exportColor);
+  el.innerHTML = `<div class="legend-block"><div class="legend-name">${title}</div><div class="legend-chips">${rows}</div></div>`;
 }
 
 // ---------- live "right now" banner ----------
@@ -382,6 +397,7 @@ function renderLive(){
   const impDir = nImp.next > curImp ? 'rises to' : 'drops to';
   const expDir = Math.abs(nExp.next) > Math.abs(curExp) ? 'increases to' : 'decreases to';
 
+  document.getElementById('gstNote').textContent = includeGST ? '(incl. GST)' : '(excl. GST)';
   document.getElementById('liveClock').textContent = clockText(now);
   document.getElementById('liveImportValue').textContent = fmt(curImp) + '/kWh';
   document.getElementById('liveImportSub').textContent =
@@ -392,7 +408,7 @@ function renderLive(){
 }
 
 function renderAll(){
-  renderHeatmaps();
+  renderHeatmap();
   renderLegendChips();
   renderLive();
 }
@@ -402,6 +418,14 @@ document.getElementById('seasonToggle').addEventListener('click', (e) => {
   if (!btn) return;
   season = btn.dataset.season;
   [...document.querySelectorAll('#seasonToggle button')].forEach(b => b.classList.toggle('active', b===btn));
+  renderAll();
+});
+
+document.getElementById('viewToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  view = btn.dataset.view;
+  [...document.querySelectorAll('#viewToggle button')].forEach(b => b.classList.toggle('active', b===btn));
   renderAll();
 });
 
