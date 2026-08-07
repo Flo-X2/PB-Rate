@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Weekly rate heatmap — ecoSOLAR</title>
 <style>
   .viz-root{
@@ -19,6 +20,11 @@
   *{box-sizing:border-box;}
   body{margin:0;background:var(--page);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text-primary);}
   .viz-root{max-width:900px;margin:0 auto;padding:28px 20px 60px;}
+  @media (max-width:600px){
+    .viz-root{padding:18px 14px 44px;}
+    h1{font-size:18px;}
+    section.card{padding:16px 14px 18px;border-radius:12px;}
+  }
   h1{font-size:20px;margin:0 0 6px;}
   .intro{color:var(--text-secondary);font-size:14px;line-height:1.5;max-width:760px;margin:0 0 22px;}
   .intro b{color:var(--text-primary);}
@@ -46,14 +52,23 @@
   .live-row .rsub{font-size:12px;color:var(--text-secondary);margin-top:2px;}
 
   .heatmaps{display:flex;gap:36px;flex-wrap:wrap;}
-  .heatmap-block{}
+  .heatmap-block{flex:1 1 260px;max-width:320px;min-width:220px;}
   .heatmap-title{font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;}
-  .hm-grid{display:grid;grid-template-columns:34px repeat(7,26px);grid-auto-rows:9px;gap:1px;}
+  .hm-grid{display:grid;grid-template-columns:30px repeat(7,1fr);grid-auto-rows:9px;gap:1px;}
   .hm-daylabel{font-size:10px;color:var(--muted);text-align:center;align-self:end;padding-bottom:2px;}
   .hm-hourlabel{font-size:9px;color:var(--muted);text-align:right;padding-right:4px;line-height:9px;}
-  .hm-cell{border-radius:1px;}
+  .hm-cell{border-radius:1px;cursor:pointer;}
   .hm-cell.current{position:relative;z-index:3;box-shadow:0 0 0 1.5px #fff, 0 0 0 3.5px #0b0b0b;}
   .hm-daylabel.current,.hm-hourlabel.current{color:var(--text-primary);font-weight:700;}
+
+  @media (max-width:600px){
+    .heatmaps{flex-direction:column;gap:26px;}
+    .heatmap-block{flex-basis:auto;max-width:100%;min-width:0;width:100%;}
+    .hm-grid{grid-template-columns:34px repeat(7,1fr);grid-auto-rows:22px;gap:2px;}
+    .hm-daylabel{font-size:12px;padding-bottom:4px;}
+    .hm-hourlabel{font-size:11px;line-height:22px;}
+    .heatmap-title{font-size:13px;}
+  }
 
   /* exact-value legend ("the bar at the bottom") */
   .legend-block{margin-top:20px;}
@@ -69,6 +84,17 @@
   #tooltip b{display:block;font-size:12px;margin-bottom:2px;}
 
   footer.note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px;}
+
+  @media (max-width:600px){
+    .toggle-row{gap:8px;margin-bottom:20px;}
+    .seg{width:100%;}
+    .seg button{flex:1 1 0;font-size:11.5px;padding:9px 6px;white-space:normal;line-height:1.25;text-align:center;}
+    .live-rows{gap:22px;}
+    .live-row{flex:1 1 140px;}
+    .live-row .rvalue{font-size:19px;}
+    .legends-row{gap:26px;}
+    .legend-chip{font-size:12.5px;}
+  }
 </style>
 </head>
 <body>
@@ -210,17 +236,26 @@ function fmt(v){
 }
 
 const tooltip = document.getElementById('tooltip');
+function placeTip(x, y){
+  const w = tooltip.offsetWidth || 160;
+  const half = w/2 + 8;
+  const clampedX = Math.min(Math.max(x, half), window.innerWidth - half);
+  const clampedY = Math.max(y - 10, tooltip.offsetHeight + 8);
+  tooltip.style.left = clampedX + 'px';
+  tooltip.style.top = clampedY + 'px';
+}
 function showTip(e, html){
   tooltip.innerHTML = html;
-  tooltip.style.left = e.clientX + 'px';
-  tooltip.style.top = (e.clientY - 10) + 'px';
   tooltip.style.opacity = 1;
+  placeTip(e.clientX, e.clientY);
 }
 function hideTip(){ tooltip.style.opacity = 0; }
-function moveTip(e){
-  tooltip.style.left = e.clientX + 'px';
-  tooltip.style.top = (e.clientY - 10) + 'px';
-}
+function moveTip(e){ placeTip(e.clientX, e.clientY); }
+// on touch devices there's no hover, so a tap shows the tooltip (see cell click
+// handlers below) — tapping anywhere else dismisses it
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.hm-cell')) hideTip();
+});
 
 // ---------- heatmaps ----------
 function renderHeatmaps(){
@@ -263,9 +298,11 @@ function renderHeatmaps(){
         cell.className = 'hm-cell';
         if (d === curDay && h2 === curHour) cell.classList.add('current');
         cell.style.background = colorFn(v);
-        cell.addEventListener('mouseenter', e => showTip(e, `<b>${DAY_NAMES[d]} ${hourLabel(h2)}–${hourLabel((h2+1)%24)}</b>${unitLabel}: ${fmt(v)}/kWh`));
+        const tipHtml = () => `<b>${DAY_NAMES[d]} ${hourLabel(h2)}–${hourLabel((h2+1)%24)}</b>${unitLabel}: ${fmt(v)}/kWh`;
+        cell.addEventListener('mouseenter', e => showTip(e, tipHtml()));
         cell.addEventListener('mousemove', moveTip);
         cell.addEventListener('mouseleave', hideTip);
+        cell.addEventListener('click', e => { e.stopPropagation(); showTip(e, tipHtml()); });
         grid.appendChild(cell);
       }
     }
