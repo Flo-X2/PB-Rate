@@ -26,7 +26,8 @@
     h1{font-size:18px;}
     section.card{padding:16px 14px 18px;border-radius:12px;}
   }
-  h1{font-size:20px;margin:0 0 20px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .subtitle{font-size:13px;color:var(--text-secondary);margin:0 0 20px;}
   .toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
   .toggle-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
   .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
@@ -61,8 +62,6 @@
   .hm-cell{border-radius:1px;cursor:pointer;position:relative;}
   .hm-daylabel.current,.hm-hourlabel.current{color:var(--text-primary);font-weight:700;}
 
-  /* "you are here" marker: a pulsing dot beats a static border for finding a
-     single small cell in a busy grid, regardless of the cell's own color */
   .hm-cell.current::after{
     content:'';
     position:absolute;
@@ -88,7 +87,6 @@
     .hm-cell.current::after{width:16px;height:16px;}
   }
 
-  /* exact-value legend ("the bar at the bottom") */
   .legend-block{margin-top:20px;}
   .legend-name{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;}
   .legend-chips{display:flex;flex-direction:column;gap:6px;}
@@ -112,6 +110,7 @@
 <body>
 <div class="viz-root">
   <h1>Weekly rate heatmap</h1>
+  <p class="subtitle">Seasonal rates Sep 2026 – Mar 2027</p>
 
   <section class="card live-card">
     <div class="live-head">
@@ -135,14 +134,6 @@
   </section>
 
   <div class="toggle-row">
-    <span class="toggle-label">Season</span>
-    <div class="seg" id="seasonToggle">
-      <button data-season="now" class="active">Now — May–Aug 2026</button>
-      <button data-season="next">Next — Sep 2026–Mar 2027</button>
-    </div>
-  </div>
-
-  <div class="toggle-row">
     <span class="toggle-label">View</span>
     <div class="seg" id="viewToggle">
       <button data-view="import" class="active">Import</button>
@@ -160,59 +151,54 @@
   <div class="toggle-row">
     <span class="toggle-label">Prices</span>
     <div class="seg" id="gstToggle">
-      <button data-gst="excl">Excl. GST</button>
-      <button data-gst="incl" class="active">Incl. GST (+15%)</button>
+      <button data-gst="excl" class="active">Excl. GST</button>
+      <button data-gst="incl">Incl. GST (+15%)</button>
     </div>
   </div>
 
   <footer class="note">
     Hover (or tap, on a phone) any cell for the exact day/hour and rate — the pulsing dot marks the current one.
-    Say the word if you'd like these turned into actual dollar charges using your real usage, a monthly total, or
-    anything else layered on top.
+    Import = energy 17.00c + EA levy 0.16c + network charge for the time slot.
   </footer>
 </div>
 
 <div id="tooltip"></div>
 
 <script>
-// ---------- data ----------
+// ---------- tariff: Seasonal Rates 09/2026 – 03/2027 (excl. GST, c/kWh) ----------
 const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-const weekdayImport = [17.82,17.82,17.82,17.16,17.16,25.16,25.16,31.35,31.35,31.35,31.35,25.16,25.16,25.16,25.16,25.16,25.16,31.35,31.35,31.35,31.35,31.35,17.82,17.82];
-const weekendImport = [20.80,20.80,20.80,17.16,17.16,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80,20.80];
+const ENERGY = 17.00, EA_LEVY = 0.16;
+const NET = { shoulder: 7.99, weekend: 3.64, peak: 14.19, offpeak: 0.66, free: 0 };
+const r = n => Math.round((ENERGY + EA_LEVY + NET[n]) * 100) / 100;
 
-const exportNow  = {
-  weekday: [-16,-16,-16,-16,-16,-16,-16, -27,-27,-27,-27, -16,-16,-16,-16,-16,-16, -27,-27,-27,-27, -22, -16,-16],
-  weekend: Array(24).fill(-16)
-};
-const exportNext = {
-  weekday: [-16,-16,-16,-16,-16,-16,-16, -21,-21,-21,-21, -16,-16,-16,-16,-16,-16, -21,-21,-21,-21, -16, -16,-16],
-  weekend: Array(24).fill(-16)
+// shoulder set to 25.16c to match the retailer usage chart (sum of listed parts rounds to 25.15c)
+const OFF = r('offpeak'), FREE = r('free'), SH = 25.16, PK = r('peak'), WE = r('weekend');
+
+const weekdayImport = [OFF,OFF,OFF,FREE,FREE,SH,SH,PK,PK,PK,PK,SH,SH,SH,SH,SH,SH,PK,PK,PK,PK,PK,OFF,OFF];
+const weekendImport = [WE,WE,WE,FREE,FREE,WE,WE,WE,WE,WE,WE,WE,WE,WE,WE,WE,WE,WE,WE,WE,WE,WE,WE,WE];
+
+const EXP_PEAK = -21, EXP_OFF = -16;
+const exportRates = {
+  weekday: [EXP_OFF,EXP_OFF,EXP_OFF,EXP_OFF,EXP_OFF,EXP_OFF,EXP_OFF, EXP_PEAK,EXP_PEAK,EXP_PEAK,EXP_PEAK,
+            EXP_OFF,EXP_OFF,EXP_OFF,EXP_OFF,EXP_OFF,EXP_OFF, EXP_PEAK,EXP_PEAK,EXP_PEAK,EXP_PEAK, EXP_OFF,EXP_OFF,EXP_OFF],
+  weekend: Array(24).fill(EXP_OFF)
 };
 
-// exact-value legend entries ("the bar at the bottom") — every distinct slot that actually occurs
 const IMPORT_SLOTS = [
-  { value: 17.16, desc: '3am–5am, every day' },
-  { value: 17.82, desc: '12am–3am & 10pm–12am, Mon–Fri' },
-  { value: 20.80, desc: '5am–12am, Sat–Sun' },
-  { value: 25.16, desc: 'Shoulder — 5–7am & 11am–5pm, Mon–Fri' },
-  { value: 31.35, desc: 'Peak — 7–11am & 5–10pm, Mon–Fri' },
+  { value: FREE, desc: '3am–5am, every day' },
+  { value: OFF,  desc: 'Off peak — 12am–3am & 10pm–12am, Mon–Fri' },
+  { value: WE,   desc: 'Weekend — all day Sat–Sun except 3am–5am' },
+  { value: SH,   desc: 'Shoulder — 5–7am & 11am–5pm, Mon–Fri' },
+  { value: PK,   desc: 'Peak — 7–11am & 5–10pm, Mon–Fri' },
 ];
-const EXPORT_SLOTS = {
-  now: [
-    { value: -16, desc: 'Off-peak & all weekend' },
-    { value: -22, desc: '9pm–10pm, Mon–Fri' },
-    { value: -27, desc: 'Peak — 7–11am & 5–9pm, Mon–Fri' },
-  ],
-  next: [
-    { value: -16, desc: 'Off-peak & all weekend' },
-    { value: -21, desc: 'Peak — 7–11am & 5–9pm, Mon–Fri' },
-  ]
-};
+const EXPORT_SLOTS = [
+  { value: EXP_OFF,  desc: 'Off peak & all weekend' },
+  { value: EXP_PEAK, desc: 'Peak — 7–11am & 5–9pm, Mon–Fri' },
+];
 
-// fixed scales so the two seasons are visually comparable when toggling
-const IMPORT_MIN = 17.16, IMPORT_MAX = 31.35;
-const EXPORT_MIN = 16,    EXPORT_MAX = 27;   // fixed to the larger (current) season
+const IMPORT_MIN = FREE, IMPORT_MAX = PK;
+const EXPORT_MIN = Math.abs(EXP_OFF), EXPORT_MAX = Math.abs(EXP_PEAK);
 const GST_RATE = 0.15;
 
 const BLUE_STOPS   = ['#b7d3f6','#6da7ec','#2a78d6','#184f95','#0d366b'];
@@ -224,10 +210,7 @@ function lerpColor(stops, t){
   const i = Math.min(stops.length - 2, Math.floor(seg));
   const f = seg - i;
   const a = hexToRgb(stops[i]), b = hexToRgb(stops[i+1]);
-  const r = Math.round(a.r + (b.r-a.r)*f);
-  const g = Math.round(a.g + (b.g-a.g)*f);
-  const bl= Math.round(a.b + (b.b-a.b)*f);
-  return `rgb(${r},${g},${bl})`;
+  return `rgb(${Math.round(a.r+(b.r-a.r)*f)},${Math.round(a.g+(b.g-a.g)*f)},${Math.round(a.b+(b.b-a.b)*f)})`;
 }
 function hexToRgb(hex){
   const n = parseInt(hex.slice(1),16);
@@ -242,11 +225,9 @@ function hourLabel(h){
   return hh + ampm;
 }
 
-let season = 'now';
 let view = 'import';
-let includeGST = true;
+let includeGST = false;
 
-// displayed value, honouring the GST toggle
 function fmt(v){
   const mult = includeGST ? (1 + GST_RATE) : 1;
   return (v * mult).toFixed(2) + 'c';
@@ -256,50 +237,37 @@ const tooltip = document.getElementById('tooltip');
 function placeTip(x, y){
   const w = tooltip.offsetWidth || 160;
   const half = w/2 + 8;
-  const clampedX = Math.min(Math.max(x, half), window.innerWidth - half);
-  const clampedY = Math.max(y - 10, tooltip.offsetHeight + 8);
-  tooltip.style.left = clampedX + 'px';
-  tooltip.style.top = clampedY + 'px';
+  tooltip.style.left = Math.min(Math.max(x, half), window.innerWidth - half) + 'px';
+  tooltip.style.top = Math.max(y - 10, tooltip.offsetHeight + 8) + 'px';
 }
-function showTip(e, html){
-  tooltip.innerHTML = html;
-  tooltip.style.opacity = 1;
-  placeTip(e.clientX, e.clientY);
-}
+function showTip(e, html){ tooltip.innerHTML = html; tooltip.style.opacity = 1; placeTip(e.clientX, e.clientY); }
 function hideTip(){ tooltip.style.opacity = 0; }
 function moveTip(e){ placeTip(e.clientX, e.clientY); }
-// on touch devices there's no hover, so a tap shows the tooltip (see cell click
-// handlers below) — tapping anywhere else dismisses it
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.hm-cell')) hideTip();
-});
+document.addEventListener('click', (e) => { if (!e.target.closest('.hm-cell')) hideTip(); });
 
-// ---------- heatmap (one grid at a time — Import or Export) ----------
+// ---------- heatmap ----------
 function renderHeatmap(){
   const wrap = document.getElementById('heatmapWrap');
   wrap.innerHTML = '';
-  const exp = season === 'now' ? exportNow : exportNext;
   const now = new Date();
   const curDay = (now.getDay() + 6) % 7;
   const curHour = now.getHours();
 
   const isImport = view === 'import';
-  const title = isImport ? 'Import — what you pay' : 'Export — what you get back';
   const valueFn = isImport
-    ? (d,h,we)=> we ? weekendImport[h] : weekdayImport[h]
-    : (d,h,we)=> we ? exp.weekend[h] : exp.weekday[h];
+    ? (h,we)=> we ? weekendImport[h] : weekdayImport[h]
+    : (h,we)=> we ? exportRates.weekend[h] : exportRates.weekday[h];
   const colorFn = isImport ? importColor : exportColor;
   const unitLabel = isImport ? 'Import' : 'Export credit';
 
-  const h = document.createElement('div');
-  h.className = 'heatmap-title';
-  h.textContent = title;
-  wrap.appendChild(h);
+  const t = document.createElement('div');
+  t.className = 'heatmap-title';
+  t.textContent = isImport ? 'Import — what you pay' : 'Export — what you get back';
+  wrap.appendChild(t);
 
   const grid = document.createElement('div');
   grid.className = 'hm-grid';
-
-  grid.appendChild(document.createElement('div')); // empty corner
+  grid.appendChild(document.createElement('div'));
   for (let d=0; d<7; d++){
     const dl = document.createElement('div');
     dl.className = 'hm-daylabel' + (d === curDay ? ' current' : '');
@@ -307,20 +275,19 @@ function renderHeatmap(){
     grid.appendChild(dl);
   }
 
-  for (let h2=0; h2<24; h2++){
+  for (let h=0; h<24; h++){
     const hl = document.createElement('div');
-    hl.className = 'hm-hourlabel' + (h2 === curHour ? ' current' : '');
-    hl.textContent = (h2%3===0 || h2===curHour) ? hourLabel(h2) : '';
+    hl.className = 'hm-hourlabel' + (h === curHour ? ' current' : '');
+    hl.textContent = (h%3===0 || h===curHour) ? hourLabel(h) : '';
     grid.appendChild(hl);
 
     for (let d=0; d<7; d++){
-      const isWeekend = d >= 5;
-      const v = valueFn(d, h2, isWeekend);
+      const v = valueFn(h, d >= 5);
       const cell = document.createElement('div');
       cell.className = 'hm-cell';
-      if (d === curDay && h2 === curHour) cell.classList.add('current');
+      if (d === curDay && h === curHour) cell.classList.add('current');
       cell.style.background = colorFn(v);
-      const tipHtml = () => `<b>${DAY_NAMES[d]} ${hourLabel(h2)}–${hourLabel((h2+1)%24)}</b>${unitLabel}: ${fmt(v)}/kWh`;
+      const tipHtml = () => `<b>${DAY_NAMES[d]} ${hourLabel(h)}–${hourLabel((h+1)%24)}</b>${unitLabel}: ${fmt(v)}/kWh`;
       cell.addEventListener('mouseenter', e => showTip(e, tipHtml()));
       cell.addEventListener('mousemove', moveTip);
       cell.addEventListener('mouseleave', hideTip);
@@ -331,32 +298,29 @@ function renderHeatmap(){
   wrap.appendChild(grid);
 }
 
-// ---------- exact-value legend ("the bar at the bottom") ----------
+// ---------- legend ----------
 function renderLegendChips(){
   const el = document.getElementById('legendChips');
   const isImport = view === 'import';
-  const slots = isImport ? IMPORT_SLOTS : (season === 'now' ? EXPORT_SLOTS.now : EXPORT_SLOTS.next);
+  const slots = isImport ? IMPORT_SLOTS : EXPORT_SLOTS;
   const colorFn = isImport ? importColor : exportColor;
   const title = isImport ? 'Import rate — exact charge per slot' : 'Export rate — exact credit per slot';
-
   const rows = slots.map(s => `
     <div class="legend-chip">
       <span class="swatch" style="background:${colorFn(s.value)}"></span>
       <span class="value">${fmt(s.value)}</span>
       <span class="desc">${s.desc}</span>
     </div>`).join('');
-
   el.innerHTML = `<div class="legend-block"><div class="legend-name">${title}</div><div class="legend-chips">${rows}</div></div>`;
 }
 
-// ---------- live "right now" banner ----------
+// ---------- live banner ----------
 function buildWeekArray(type){
   const arr = [];
-  const exp = season === 'now' ? exportNow : exportNext;
   for (let d=0; d<7; d++){
-    const isWeekend = d >= 5;
-    if (type === 'import') arr.push(...(isWeekend ? weekendImport : weekdayImport));
-    else arr.push(...(isWeekend ? exp.weekend : exp.weekday));
+    const we = d >= 5;
+    if (type === 'import') arr.push(...(we ? weekendImport : weekdayImport));
+    else arr.push(...(we ? exportRates.weekend : exportRates.weekday));
   }
   return arr;
 }
@@ -377,18 +341,14 @@ function durationText(steps, now){
 }
 function pad(n){ return n<10 ? '0'+n : n; }
 function clockText(now){
-  let h = now.getHours(); const m = now.getMinutes();
-  const ampm = h < 12 ? 'am' : 'pm';
+  const h = now.getHours(), m = now.getMinutes();
   let hh = h % 12; if (hh===0) hh = 12;
-  return `${DAY_NAMES[(now.getDay()+6)%7]} ${hh}:${pad(m)}${ampm}`;
+  return `${DAY_NAMES[(now.getDay()+6)%7]} ${hh}:${pad(m)}${h < 12 ? 'am' : 'pm'}`;
 }
 
 function renderLive(){
   const now = new Date();
-  const dayIdx = (now.getDay() + 6) % 7;
-  const hour = now.getHours();
-  const idx = dayIdx*24 + hour;
-
+  const idx = ((now.getDay() + 6) % 7)*24 + now.getHours();
   const impArr = buildWeekArray('import');
   const expArr = buildWeekArray('export');
   const curImp = impArr[idx], curExp = expArr[idx];
@@ -407,31 +367,16 @@ function renderLive(){
     `Holds for ${durationText(nExp.steps, now)}, then ${expDir} ${fmt(nExp.next)}/kWh`;
 }
 
-function renderAll(){
-  renderHeatmap();
-  renderLegendChips();
-  renderLive();
-}
-
-document.getElementById('seasonToggle').addEventListener('click', (e) => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
-  season = btn.dataset.season;
-  [...document.querySelectorAll('#seasonToggle button')].forEach(b => b.classList.toggle('active', b===btn));
-  renderAll();
-});
+function renderAll(){ renderHeatmap(); renderLegendChips(); renderLive(); }
 
 document.getElementById('viewToggle').addEventListener('click', (e) => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
+  const btn = e.target.closest('button'); if (!btn) return;
   view = btn.dataset.view;
   [...document.querySelectorAll('#viewToggle button')].forEach(b => b.classList.toggle('active', b===btn));
   renderAll();
 });
-
 document.getElementById('gstToggle').addEventListener('click', (e) => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
+  const btn = e.target.closest('button'); if (!btn) return;
   includeGST = btn.dataset.gst === 'incl';
   [...document.querySelectorAll('#gstToggle button')].forEach(b => b.classList.toggle('active', b===btn));
   renderAll();
